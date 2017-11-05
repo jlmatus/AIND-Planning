@@ -61,15 +61,15 @@ class AirCargoProblem(Problem):
             """
             loads = []
             # TODO create all load ground actions from the domain Load action
-            for a in self.airports:
-                for p in self.planes:
-                    for c in self.cargos:
-                        precond_pos = [expr("At({}, {})".format(c, a)),
-                                       expr("At({}, {})".format(p, a))]
+            for airport in self.airports:
+                for plane in self.planes:
+                    for cargo in self.cargos:
+                        precond_pos = [expr("At({}, {})".format(cargo, airport)),
+                                       expr("At({}, {})".format(plane, airport))]
                         precond_neg = []
-                        effect_add = [expr("In({}, {})".format(c, p))]
-                        effect_rem = [expr("At({}, {})".format(c, a))]
-                        load = Action(expr("Load({}, {}, {})".format(c, p, a)),
+                        effect_add = [expr("In({}, {})".format(cargo, plane))]
+                        effect_rem = [expr("At({}, {})".format(cargo, airport))]
+                        load = Action(expr("Load({}, {}, {})".format(cargo, plane, airport)),
                                      [precond_pos, precond_neg],
                                      [effect_add, effect_rem])
                         loads.append(load)
@@ -82,15 +82,15 @@ class AirCargoProblem(Problem):
             """
             unloads = []
             # TODO create all Unload ground actions from the domain Unload action
-            for a in self.airports:
-                for p in self.planes:
-                    for c in self.cargos:
-                        precond_pos = [expr("In({}, {})".format(c, p)),
-                                       expr("At({}, {})".format(p, a))]
+            for airport in self.airports:
+                for plane in self.planes:
+                    for cargo in self.cargos:
+                        precond_pos = [expr("In({}, {})".format(cargo, plane)),
+                                       expr("At({}, {})".format(plane, airport))]
                         precond_neg = []
-                        effect_add = [expr("At({}, {})".format(c, a))]
-                        effect_rem = [expr("In({}, {})".format(c, p))]
-                        unload = Action(expr("Unload({}, {}, {})".format(c, p, a)),
+                        effect_add = [expr("At({}, {})".format(cargo, airport))]
+                        effect_rem = [expr("In({}, {})".format(cargo, plane))]
+                        unload = Action(expr("Unload({}, {}, {})".format(cargo, plane, airport)),
                                      [precond_pos, precond_neg],
                                      [effect_add, effect_rem])
                         unloads.append(unload)            
@@ -212,8 +212,26 @@ class AirCargoProblem(Problem):
         executed.
         """
         # TODO implement (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
+
+        # Per https://discussions.udacity.com/t/understanding-ignore-precondition-heuristic/225906/2 :
+        # The Node object describes the current state. Since we're ignoring preconditions,
+        # we need to look at each goal condition in the goal state and count the number of
+        # individual actions that will make them happen. Of course, if a goal condition
+        # is already satisfied by the current state, then no additional action for this
+        # condition needs to be perfomed.
+
+        # Get a handle to our knowledge base of logical expressions (propositional logic)
         count = 0
-        return count
+        # Add the current state's positive sentence's clauses to the propositional logic KB
+        kb = PropKB()
+        numGoals = len(self.goal)
+        kb.tell(decode_state(node.state, self.state_map).pos_sentence())
+        for clause in self.goal: 
+            # Now check if the goal is contained in the list of achieved goals 
+            if clause in kb.clauses: 
+                count += 1 # the goal has been achieved already 
+        unachievedGoals = numGoals - count
+        return unachievedGoals
 
 
 def air_cargo_p1() -> AirCargoProblem:
